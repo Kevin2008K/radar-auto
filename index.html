@@ -458,13 +458,7 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
   let noteId = null;
   $("#list").addEventListener("click", (e) => {
     const link = e.target.closest("a.act.open");
-    if (link) {
-      saveView();
-      e.preventDefault();
-      const w = window.open(link.href, "_blank", "noopener");
-      if (!w) location.href = link.href;
-      return;
-    }
+    if (link) { saveView(); return; }  // il link stesso apre l'annuncio in una nuova scheda (target="_blank")
     const b = e.target.closest("[data-act]"); if (!b) return;
     if (b.dataset.act === "loadmore") { S.shown += 40; render(); return; }
     const id = b.closest("[data-id]")?.dataset.id; if (!id) return;
