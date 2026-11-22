@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Radar Auto</title>
+<meta name="theme-color" content="#1f4fbf">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icona.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: colonna unica da telefono; schede auto impilate con barra filtri fissa in alto */
+:root {
+  --bg: #eef1f5; --surface: #ffffff; --ink: #141c28; --muted: #5a6574; --line: #d9dfe8;
+  --chip: #e9edf3; --accent: #1f4fbf; --accent-ink: #ffffff; --accent-soft: #e3eafb;
+  --good: #187a43; --good-soft: #dff3e7; --warn: #9a6512; --warn-soft: #fbefd9;
+  --bad: #ad2b22; --bad-soft: #fbe4e1; --plate: #ffffff; --plate-band: #1f4fbf;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e131a; --surface: #161d27; --ink: #e6ebf2; --muted: #96a1b0; --line: #273141;
+  --chip: #1f2835; --accent: #7da2ff; --accent-ink: #0b1220; --accent-soft: #1c2a47;
+  --good: #5ccf8b; --good-soft: #15301f; --warn: #e6b45c; --warn-soft: #33270f;
+  --bad: #ff8a80; --bad-soft: #3a1714; --plate: #e9edf3; --plate-band: #2a55c4; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e131a; --surface: #161d27; --ink: #e6ebf2; --muted: #96a1b0; --line: #273141;
+  --chip: #1f2835; --accent: #7da2ff; --accent-ink: #0b1220; --accent-soft: #1c2a47;
+  --good: #5ccf8b; --good-soft: #15301f; --warn: #e6b45c; --warn-soft: #33270f;
+  --bad: #ff8a80; --bad-soft: #3a1714; --plate: #e9edf3; --plate-band: #2a55c4; color-scheme: dark }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0;  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .wrap { padding-block: 10px 8px; display: grid; gap: 8px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { margin: 0; font-family: var(--f-display); font-size: 26px; letter-spacing: .01em; text-wrap: balance; }
+.brand h1 span { color: var(--accent); }
+.status { font-size: 12.5px; color: var(--muted); text-align: right; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.tab b { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.tab[aria-selected="true"] b { color: inherit; opacity: .75; }
+.toolbar { display: flex; gap: 8px; align-items: center; }
+.toolbar select { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 8px; font-size: 14px; }
+.btn-ghost { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 12px; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.btn-ghost[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; padding: 12px 0 4px; border-top: 1px dashed var(--line); }
+.filters label { display: grid; gap: 2px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.filters label output { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.filters input[type=range] { width: 100%; accent-color: var(--accent); }
+.filters select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 6px; font-size: 14px; color: var(--ink); }
+.filters .check { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 14px; }
+.filters .reset { justify-self: start; align-self: end; }
+
+main .wrap { padding-block: 14px 40px; display: grid; gap: 12px; }
+.learned { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.learned summary { padding: 10px 14px; cursor: pointer; font-weight: 600; font-size: 14px; list-style: none; display: flex; justify-content: space-between; }
+.learned summary::after { content: "Mostra"; color: var(--accent); font-weight: 500; }
+.learned[open] summary::after { content: "Nascondi"; }
+.learned div { padding: 0 14px 12px; white-space: pre-wrap; color: var(--muted); font-size: 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; display: grid; grid-template-columns: 168px minmax(0, 1fr); }
+.card.gone { opacity: .55; }
+.photo { position: relative; background: var(--chip); min-height: 126px; }
+.photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo .noimg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.body { padding: 10px 12px 12px; display: grid; gap: 6px; min-width: 0; }
+.row1 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.verdict { font-weight: 600; border-radius: 6px; padding: 1px 7px; font-size: 12.5px; }
+.v-consigliata { background: var(--good-soft); color: var(--good); }
+.v-interessante { background: var(--warn-soft); color: var(--warn); }
+.v-scartata { background: var(--bad-soft); color: var(--bad); }
+.v-none { background: var(--chip); color: var(--muted); }
+.pill { border-radius: 6px; padding: 1px 7px; font-weight: 600; font-size: 12px; }
+.pill.new { background: var(--accent); color: var(--accent-ink); }
+.pill.drop { background: var(--good-soft); color: var(--good); }
+.pill.gone { background: var(--chip); color: var(--muted); }
+.site { margin-left: auto; color: var(--muted); }
+.title { font-weight: 600; font-size: 15.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.priceline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.price { font-family: var(--f-display); font-size: 27px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.market { font-size: 12.5px; color: var(--muted); }
+.market.below { color: var(--good); font-weight: 600; }
+.specs { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.specs strong { color: var(--ink); font-weight: 600; }
+.specs .km { font-family: var(--f-display); font-size: 19px; font-weight: 700; line-height: 1; }
+.plate { display: inline-flex; align-items: stretch; border: 1.5px solid var(--ink); border-radius: 4px; overflow: hidden; font-family: var(--f-display); font-weight: 700; font-size: 14px; line-height: 1; background: var(--plate); color: #141c28; }
+.plate i { background: var(--plate-band); color: #fff; font-style: normal; font-size: 8px; padding: 3px 3px 0; display: grid; align-content: end; }
+.plate span { padding: 2px 5px 1px; letter-spacing: .04em; }
+.comment { font-size: 14px; }
+.checks { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--muted); }
+.flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.flag { background: var(--chip); color: var(--muted); font-size: 12px; border-radius: 6px; padding: 1px 7px; }
+.flag.warn { background: var(--warn-soft); color: var(--warn); }
+.mynote { font-size: 13.5px; background: var(--accent-soft); border-radius: 8px; padding: 6px 9px; overflow-wrap: anywhere; }
+.mynote b { color: var(--accent); font-weight: 600; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.act { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 10px; font-size: 13.5px; font-weight: 500; text-decoration: none; color: var(--ink); }
+.act svg { width: 16px; height: 16px; }
+.act.like[aria-pressed="true"] { background: var(--good-soft); border-color: var(--good); color: var(--good); }
+.act.dislike[aria-pressed="true"] { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.act.maybe[aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.act.open { margin-left: auto; color: var(--accent); border-color: var(--accent); }
+.more { border: 0; background: none; color: var(--accent); font-size: 13px; padding: 0; justify-self: start; }
+
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); padding: 28px 18px; text-align: center; color: var(--muted); }
+.empty h2 { margin: 0 0 6px; font-family: var(--f-display); color: var(--ink); font-size: 22px; }
+.count { font-size: 13px; color: var(--muted); }
+.loadmore { justify-self: center; }
+
+dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; width: min(520px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); }
+dialog::backdrop { background: rgba(10, 15, 25, .45); }
+dialog form { padding: 16px; display: grid; gap: 10px; }
+dialog h3 { margin: 0; font-size: 16px; }
+dialog p { margin: 0; color: var(--muted); font-size: 13.5px; }
+dialog textarea { width: 100%; min-height: 110px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--bg); resize: vertical; }
+dialog .row { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 7px 16px; font-weight: 600; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--surface); padding: 8px 14px; border-radius: 8px; font-size: 14px; z-index: 20; }
+
+.login { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 16px; max-width: 420px; width: 100%; justify-self: center; }
+.login form { display: grid; gap: 12px; }
+.login h2 { margin: 0; font-family: var(--f-display); font-size: 24px; }
+.login p { margin: 0; color: var(--muted); font-size: 14px; }
+.login p.err { color: var(--bad); }
+.login p.ok { color: var(--good); }
+.login label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.login input { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; background: var(--bg); font-size: 16px; }
+.login .row { display: flex; gap: 8px; flex-wrap: wrap; }
+body.out .tabs, body.out .toolbar, body.out .filters { display: none !important; }
+.logout { justify-self: start; align-self: end; }
+
+@media (max-width: 520px) {
+  .card { grid-template-columns: minmax(0, 1fr); }
+  .photo { aspect-ratio: 4 / 3; max-height: 230px; min-height: 0; }
+  .act.open { margin-left: 0; }
+}
+@media (prefers-reduced-motion: no-preference) { .card { animation: in .2s ease-out; } @keyframes in { from { transform: translateY(4px); } to { transform: none; } } }
+</style>
+</head>
+<body class="out">
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>Radar <span>Auto</span></h1>
+      <div class="status" id="status">In attesa dei dati…</div>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="toolbar">
+      <select id="sort" aria-label="Ordina">
+        <option value="recenti">Più recenti</option>
+        <option value="punteggio">Miglior affare</option>
+        <option value="prezzo">Prezzo più basso</option>
+        <option value="km">Meno km</option>
+        <option value="anno">Più nuove</option>
+        <option value="distanza">Più vicine</option>
+      </select>
+      <button class="btn-ghost" id="toggleFilters" aria-expanded="false" aria-controls="filters">Filtri</button>
+    </div>
+    <div class="filters" id="filters" hidden>
+      <label>Prezzo massimo <output id="o-prezzo"></output><input type="range" id="f-prezzo" min="1000" max="5000" step="100"></label>
+      <label>Km massimi <output id="o-km"></output><input type="range" id="f-km" min="30000" max="180000" step="5000"></label>
+      <label>Anno minimo <output id="o-anno"></output><input type="range" id="f-anno" min="2009" max="2020" step="1"></label>
+      <label>Distanza massima <output id="o-dist"></output><input type="range" id="f-dist" min="10" max="100" step="5"></label>
+      <label>Potenza minima <output id="o-cvmin"></output><input type="range" id="f-cvmin" min="40" max="145" step="5"></label>
+      <label>Potenza massima <output id="o-cvmax"></output><input type="range" id="f-cvmax" min="40" max="145" step="5"></label>
+      <label>Giudizio di Claude
+        <select id="f-giudizio"><option value="tutte">Consigliate e interessanti</option><option value="consigliata">Solo consigliate</option></select></label>
+      <label>Venditore
+        <select id="f-venditore"><option value="tutti">Tutti</option><option value="Privato">Solo privati</option><option value="Concessionario">Solo concessionari</option></select></label>
+      <label>Sito
+        <select id="f-sito"><option value="tutti">Tutti</option><option value="Subito">Subito</option><option value="AutoScout24">AutoScout24</option></select></label>
+      <label class="check"><input type="checkbox" id="f-oggi"> Solo trovate nelle ultime 24 ore</label>
+      <label class="check"><input type="checkbox" id="f-gpl"> Includi auto con impianto GPL/metano</label>
+      <button class="btn-ghost reset" id="resetFilters" type="button">Azzera filtri</button>
+      <button class="btn-ghost logout" id="logout" type="button">Esci dall'account</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap" id="main">
+    <section class="login" id="login" hidden>
+      <form id="loginForm">
+        <h2>Accedi a Radar Auto</h2>
+        <p id="loginMsg">Entra con la tua email e la tua password.</p>
+        <label>Email <input type="email" id="loginEmail" autocomplete="username" required></label>
+        <label>Password <input type="password" id="loginPass" autocomplete="current-password" minlength="8" required></label>
+        <div class="row">
+          <button class="btn-primary" type="submit" id="btnLogin">Accedi</button>
+          <button class="btn-ghost" type="button" id="btnSignup">Crea account</button>
+        </div>
+      </form>
+    </section>
+    <details class="learned" id="learned" hidden><summary>Cosa ho capito dei tuoi gusti</summary><div id="learnedText"></div></details>
+    <div class="count" id="count"></div>
+    <div id="list" style="display:grid;gap:12px"></div>
+  </div>
+</main>
+
+<dialog id="noteDlg">
+  <form method="dialog" id="noteForm">
+    <h3 id="noteTitle">Nota</h3>
+    <p>Scrivi cosa ti piace o non ti piace di questa auto. Claude legge le note a ogni controllo e ne tiene conto per i prossimi annunci.</p>
+    <textarea id="noteText" placeholder="Es. troppo vecchia per quel prezzo, ma mi piace la carrozzeria"></textarea>
+    <div class="row"><button type="button" class="btn-ghost" id="noteCancel">Annulla</button><button class="btn-primary" id="noteSave" value="save">Salva nota</button></div>
+  </form>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const DEF = { prezzo: 5000, km: 180000, anno: 2009, dist: 100, cvmin: 40, cvmax: 145, giudizio: "tutte", venditore: "tutti", sito: "tutti", oggi: false, gpl: false };
+  const S = { cars: new Map(), votes: new Map(), gone: new Set(), excluded: new Set(), giro: null, profilo: null, tab: "davedere", sort: "recenti",
+              f: { ...DEF }, open: new Set(), shown: 40, db: null, loaded: false, canWrite: true, photos: new Map(), photoAsked: new Set(), lastLoad: 0 };
+  try { const saved = JSON.parse(localStorage.getItem("radar-filtri") || "null"); if (saved) { Object.assign(S.f, saved.f || {}); S.sort = saved.sort || S.sort; } } catch (e) {}
+  const saveUi = () => { try { localStorage.setItem("radar-filtri", JSON.stringify({ f: S.f, sort: S.sort })); } catch (e) {} };
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const eur = (n) => n == null ? "—" : n.toLocaleString("it-IT") + " €";
+  const kmf = (n) => n == null ? "km n.d." : n.toLocaleString("it-IT") + " km";
+  const ts = (s) => s ? new Date(s.replace(" ", "T")).getTime() : 0;
+  const when = (s) => {
+    if (!s) return "";
+    const d = new Date(s.replace(" ", "T")), now = new Date();
+    const hm = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+    const days = Math.floor((new Date(now.toDateString()) - new Date(d.toDateString())) / 864e5);
+    return days === 0 ? `oggi ${hm}` : days === 1 ? `ieri ${hm}` : d.toLocaleDateString("it-IT", { day: "numeric", month: "short" }) + ` ${hm}`;
+  };
+  const toast = (msg) => { const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2200); };
+  const giud = (c) => c.valutazione?.giudizio || null;
+  const vote = (id) => S.votes.get(id)?.voto || 0;
+  const isGpl = (c) => (c.segnali || []).includes("impianto GPL o metano");
+
+  const ICON = {
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v11H3V10h4Zm0 0 4-8a3 3 0 0 1 3 3v4h5.5a2 2 0 0 1 2 2.3l-1.4 8A2 2 0 0 1 18.1 21H7"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V3h4v11h-4Zm0 0-4 8a3 3 0 0 1-3-3v-4H4.5a2 2 0 0 1-2-2.3l1.4-8A2 2 0 0 1 5.9 3H17"/></svg>',
+    maybe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>',
+    note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    out: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  };
+
+  // ------------------------------------------------------------ elenco
+  function allCars() {
+    const m = new Map(S.cars);
+    for (const [id, v] of S.votes) if (!m.has(id) && v.auto) m.set(id, { ...v.auto, id });
+    return [...m.values()].filter((c) => !S.excluded.has(c.id));
+  }
+  function inTab(c, tab) {
+    const v = vote(c.id), g = giud(c);
+    if (tab === "piace") return v === 1;
+    if (tab === "forse") return v === 0.5;
+    if (tab === "nonpiace") return v === -1;
+    if (tab === "scartate") return g === "scartata" && v === 0;
+    return v === 0 && g !== "scartata" && !S.gone.has(c.id);
+  }
+  function passFilters(c) {
+    const f = S.f;
+    if (S.tab !== "davedere") return true;
+    if (c.prezzo > f.prezzo) return false;
+    if (c.km != null && c.km > f.km) return false;
+    if ((c.anno || 0) < f.anno) return false;
+    if (c.distanza != null && c.distanza > f.dist) return false;
+    if (c.cv != null && (c.cv < f.cvmin || c.cv > f.cvmax)) return false;
+    if (f.giudizio === "consigliata" && giud(c) !== "consigliata") return false;
+    if (f.venditore !== "tutti" && c.venditore !== f.venditore) return false;
+    if (f.sito !== "tutti" && c.sito !== f.sito) return false;
+    if (f.oggi && Date.now() - ts(c.trovato) > 864e5) return false;
+    if (!f.gpl && isGpl(c)) return false;
+    return true;
+  }
+  const SORTS = {
+    recenti: (a, b) => ts(b.pubblicato || b.trovato) - ts(a.pubblicato || a.trovato),
+    punteggio: (a, b) => ((b.valutazione?.voto || 0) * 10 + (b.punteggio || 0) / 10) - ((a.valutazione?.voto || 0) * 10 + (a.punteggio || 0) / 10),
+    prezzo: (a, b) => a.prezzo - b.prezzo,
+    km: (a, b) => (a.km ?? 1e9) - (b.km ?? 1e9),
+    anno: (a, b) => (b.anno || 0) - (a.anno || 0) || (a.km ?? 1e9) - (b.km ?? 1e9),
+    distanza: (a, b) => (a.distanza ?? 999) - (b.distanza ?? 999),
+  };
+
+  function card(c) {
+    const g = giud(c), v = vote(c.id), val = c.valutazione || {};
+    const isNew = Date.now() - ts(c.trovato) < 864e5;
+    const drop = c.prezzo_iniziale && c.prezzo < c.prezzo_iniziale;
+    const gone = S.gone.has(c.id);
+    const med = c.mediana_simili;
+    const below = med && c.prezzo < med * 0.92;
+    const label = { consigliata: "Consigliata", interessante: "Interessante", scartata: "Scartata da Claude" }[g] || "Non ancora valutata";
+    const note = S.votes.get(c.id)?.nota;
+    const open = S.open.has(c.id);
+    const flags = (c.segnali || []).filter((s) => s !== "modello affidabile");
+    const warnFlags = ["lavori da fare", "possibile problema motore", "km non certificati", "ferma da tempo", "danni di carrozzeria", "frizione da fare", "km sospetti", "anno incoerente"];
+    const longComment = (val.commento || "").length > 220 || (val.controlli || []).length > 0;
+    const foto = S.photos.get(c.id) || c.foto;
+    const attesa = !foto && c.ha_foto && !S.photos.has(c.id);
+    return `<article class="card${gone ? " gone" : ""}" data-id="${esc(c.id)}" data-photo="${attesa ? 1 : 0}">
+      <div class="photo">${foto ? `<img src="${esc(foto)}" alt="${esc(c.titolo)}" loading="lazy">` : `<div class="noimg">${attesa ? "Carico la foto…" : "Foto sull'annuncio"}</div>`}</div>
+      <div class="body">
+        <div class="row1">
+          <span class="verdict v-${g || "none"}">${label}${val.voto ? ` · ${val.voto}/10` : ""}</span>
+          ${isNew ? '<span class="pill new">Nuova</span>' : ""}
+          ${drop ? `<span class="pill drop">Ribassata da ${eur(c.prezzo_iniziale)}</span>` : ""}
+          ${gone ? '<span class="pill gone">Non più online</span>' : ""}
+          <span class="site">${esc(c.sito)} · ${esc(when(c.pubblicato || c.trovato))}</span>
+        </div>
+        <div class="title">${esc(c.titolo)}</div>
+        <div class="priceline">
+          <span class="price">${eur(c.prezzo)}</span>
+          ${med ? `<span class="market${below ? " below" : ""}">auto simili: ~${eur(med)}</span>` : ""}
+        </div>
+        <div class="specs">
+          <span class="plate" title="Anno di immatricolazione"><i>I</i><span>${esc(c.anno || "—")}</span></span>
+          <strong class="km">${kmf(c.km)}</strong>
+          ${c.cv ? `<span>${c.cv} CV${c.kw ? ` (${c.kw} kW)` : ""}</span>` : ""}
+          ${c.distanza != null ? `<span>${Math.round(c.distanza)} km da casa</span>` : ""}
+          <span>${esc(c.comune || "")}${c.prov ? ` (${esc(c.prov)})` : ""}</span>
+          <span>${esc(c.venditore || "")}</span>
+        </div>
+        ${val.commento ? `<div class="comment">${esc(open || !longComment ? val.commento : val.commento.slice(0, 220) + (val.commento.length > 220 ? "…" : ""))}</div>` : ""}
+        ${open && (val.controlli || []).length ? `<ul class="checks">${val.controlli.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+        ${longComment ? `<button class="more" data-act="more">${open ? "Meno dettagli" : "Cosa controllare"}</button>` : ""}
+        ${flags.length ? `<div class="flags">${flags.map((s) => `<span class="flag${warnFlags.includes(s) || s.startsWith("difetto") ? " warn" : ""}">${esc(s)}</span>`).join("")}</div>` : ""}
+        ${note ? `<div class="mynote"><b>La tua nota:</b> ${esc(note)}</div>` : ""}
+        <div class="actions">
+          <button class="act like" data-act="like" aria-pressed="${v === 1}">${ICON.up}Mi piace</button>
+          <button class="act maybe" data-act="maybe" aria-pressed="${v === 0.5}">${ICON.maybe}Forse</button>
+          <button class="act dislike" data-act="dislike" aria-pressed="${v === -1}">${ICON.down}No</button>
+          <button class="act" data-act="note">${ICON.note}${note ? "Modifica nota" : "Nota"}</button>
+          <a class="act open" href="${esc(c.url)}" target="_blank" rel="noopener">${ICON.out}Annuncio</a>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function render() {
+    const cars = allCars();
+    const tabs = [["davedere", "Da vedere"], ["piace", "Mi piacciono"], ["forse", "Forse"], ["nonpiace", "Non mi piacciono"], ["scartate", "Scartate da Claude"]];
+    $("#tabs").innerHTML = tabs.map(([k, l]) => {
+      const n = cars.filter((c) => inTab(c, k) && (k !== "davedere" || passFilters(c))).length;
+      return `<button class="tab" role="tab" aria-selected="${S.tab === k}" data-tab="${k}">${l} <b>${n}</b></button>`;
+    }).join("");
+    const list = cars.filter((c) => inTab(c, S.tab) && passFilters(c)).sort(SORTS[S.sort]);
+    const el = $("#list");
+    if (!S.loaded) { el.innerHTML = `<div class="empty"><h2>Carico le auto…</h2>Se non compare nulla entro pochi secondi, apri questa pagina da claude.ai con il tuo account.</div>`; $("#count").textContent = ""; return; }
+    if (!list.length) {
+      const msg = {
+        davedere: cars.length ? ["Nessuna auto con questi filtri", "Allarga i filtri o aspetta il prossimo controllo: Claude cerca nuove auto più volte al giorno."] : ["Nessuna auto ancora", "Al primo controllo Claude cercherà su Subito e AutoScout24 e metterà qui le auto adatte a te."],
+        piace: ["Nessuna auto tra le preferite", "Tocca «Mi piace» su un'auto per tenerla qui."],
+        forse: ["Niente in sospeso", "Tocca «Forse» sulle auto che non ti convincono del tutto ma che non vuoi scartare. Aggiungi una nota per dire cosa manca: Claude ne tiene conto."],
+        nonpiace: ["Niente qui", "Le auto a cui dai «No» finiscono qui, e Claude ne tiene conto."],
+        scartate: ["Nessuna auto scartata", "Qui vedi le auto che Claude ha scartato, con il motivo. Se una ti piace comunque, dagli «Mi piace»: imparerà."],
+      }[S.tab];
+      el.innerHTML = `<div class="empty"><h2>${msg[0]}</h2>${msg[1]}</div>`;
+      $("#count").textContent = "";
+      return;
+    }
+    $("#count").textContent = `${list.length} auto`;
+    el.innerHTML = list.slice(0, S.shown).map(card).join("") + (list.length > S.shown ? `<button class="btn-ghost loadmore" data-act="loadmore">Mostra altre ${Math.min(40, list.length - S.shown)}</button>` : "");
+    loadPhotos();
+  }
+  async function loadPhotos() {
+    if (!S.db) return;
+    const ids = [...document.querySelectorAll('article[data-photo="1"]')].map((a) => a.dataset.id).filter((id) => !S.photoAsked.has(id));
+    ids.forEach((id) => S.photoAsked.add(id));
+    for (let i = 0; i < ids.length; i += 30) {
+      const chunk = ids.slice(i, i + 30);
+      const { data, error } = await S.db.from("radar_foto").select("id,foto").in("id", chunk);
+      if (error) { chunk.forEach((id) => S.photoAsked.delete(id)); continue; }
+      for (const r of data || []) {
+        S.photos.set(r.id, r.foto);
+        const art = document.querySelector(`article[data-id="${CSS.escape(r.id)}"]`);
+        if (art) { art.dataset.photo = "0"; art.querySelector(".photo").innerHTML = `<img src="${esc(r.foto)}" alt="" loading="lazy">`; }
+      }
+      for (const id of chunk) if (!S.photos.has(id)) {
+        S.photos.set(id, null);
+        const art = document.querySelector(`article[data-id="${CSS.escape(id)}"] .noimg`);
+        if (art) art.textContent = "Foto sull'annuncio";
+      }
+    }
+  }
+
+  function renderStatus() {
+    const g = S.giro;
+    if (!g) { $("#status").textContent = S.loaded ? "Nessun controllo ancora" : "In attesa dei dati…"; return; }
+    const n = g.pubblicate || 0;
+    $("#status").innerHTML = `Ultimo controllo ${esc(when(g.ts))}<br>${n} ${n === 1 ? "auto nuova" : "auto nuove"}${g.consigliate ? `, ${g.consigliate} consigliate` : ""}`;
+  }
+  function renderLearned() {
+    const p = S.profilo;
+    $("#learned").hidden = !p?.testo;
+    if (p?.testo) $("#learnedText").textContent = p.testo;
+  }
+
+  // ------------------------------------------------------------ filtri
+  const F = { prezzo: ["#f-prezzo", "#o-prezzo", eur], km: ["#f-km", "#o-km", kmf], anno: ["#f-anno", "#o-anno", (v) => "dal " + v], dist: ["#f-dist", "#o-dist", (v) => v + " km"], cvmin: ["#f-cvmin", "#o-cvmin", (v) => v <= 40 ? "nessun minimo" : `${v} CV (${Math.round(v * 0.7355)} kW)`], cvmax: ["#f-cvmax", "#o-cvmax", (v) => v >= 145 ? "nessun massimo" : `${v} CV (${Math.round(v * 0.7355)} kW)`] };
+  function syncFilters() {
+    for (const [k, [i, o, fmt]] of Object.entries(F)) { $(i).value = S.f[k]; $(o).textContent = fmt(+S.f[k]); }
+    $("#f-giudizio").value = S.f.giudizio; $("#f-venditore").value = S.f.venditore; $("#f-sito").value = S.f.sito;
+    $("#f-oggi").checked = S.f.oggi; $("#f-gpl").checked = S.f.gpl; $("#sort").value = S.sort;
+  }
+  for (const [k, [i, o, fmt]] of Object.entries(F)) $(i).addEventListener("input", (e) => { S.f[k] = +e.target.value; $(o).textContent = fmt(S.f[k]); S.shown = 40; saveUi(); render(); });
+  for (const k of ["giudizio", "venditore", "sito"]) $("#f-" + k).addEventListener("change", (e) => { S.f[k] = e.target.value; S.shown = 40; saveUi(); render(); });
+  for (const k of ["oggi", "gpl"]) $("#f-" + k).addEventListener("change", (e) => { S.f[k] = e.target.checked; S.shown = 40; saveUi(); render(); });
+  $("#sort").addEventListener("change", (e) => { S.sort = e.target.value; saveUi(); render(); });
+  $("#toggleFilters").addEventListener("click", (e) => { const open = $("#filters").hidden; $("#filters").hidden = !open; e.currentTarget.setAttribute("aria-expanded", open); });
+  $("#resetFilters").addEventListener("click", () => { S.f = { ...DEF }; syncFilters(); saveUi(); render(); });
+  $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (!b) return; S.tab = b.dataset.tab; S.shown = 40; render(); window.scrollTo({ top: 0 }); });
+
+  // ------------------------------------------------------------ voti e note
+  function compact(c) { const { foto, descrizione, ...rest } = c; return rest; }
+  async function writeVote(id, patch) {
+    if (!S.db) { toast("Accedi per salvare"); return; }
+    const c = allCars().find((x) => x.id === id);
+    const prev = S.votes.get(id) || {};
+    const doc = { id, voto: prev.voto || 0, nota: prev.nota || "", ...patch, ts: new Date().toISOString(), auto: c ? compact(c) : prev.auto || null };
+    S.votes.set(id, doc); render();
+    try { const { error } = await S.db.from("radar_voti").upsert(doc); if (error) throw error; }
+    catch (e) {
+      if (prev.id) S.votes.set(id, prev); else S.votes.delete(id);
+      render();
+      toast(e?.code === "42501" ? "Questo account non può salvare qui" : "Non sono riuscito a salvare, riprova");
+    }
+  }
+  let noteId = null;
+  $("#list").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    if (b.dataset.act === "loadmore") { S.shown += 40; render(); return; }
+    const id = b.closest("[data-id]")?.dataset.id; if (!id) return;
+    const act = b.dataset.act, v = vote(id);
+    if (act === "like") { writeVote(id, { voto: v === 1 ? 0 : 1 }); if (v !== 1) toast("Aggiunta a «Mi piacciono»"); }
+    if (act === "maybe") { writeVote(id, { voto: v === 0.5 ? 0 : 0.5 }); if (v !== 0.5) toast("Spostata in «Forse»"); }
+    if (act === "dislike") { writeVote(id, { voto: v === -1 ? 0 : -1 }); if (v !== -1) toast("Spostata in «Non mi piacciono»"); }
+    if (act === "more") { S.open.has(id) ? S.open.delete(id) : S.open.add(id); render(); }
+    if (act === "note") {
+      noteId = id;
+      const c = allCars().find((x) => x.id === id);
+      $("#noteTitle").textContent = c ? `Nota su ${c.titolo}` : "Nota";
+      $("#noteText").value = S.votes.get(id)?.nota || "";
+      $("#noteDlg").showModal(); $("#noteText").focus();
+    }
+  });
+  $("#noteCancel").addEventListener("click", () => $("#noteDlg").close());
+  $("#noteForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const txt = $("#noteText").value.trim();
+    if (noteId) { writeVote(noteId, { nota: txt }); toast(txt ? "Nota salvata" : "Nota tolta"); }
+    $("#noteDlg").close();
+  });
+
+  // ------------------------------------------------------------ dati (Supabase)
+  const SB_URL = "https://nqlyoiqnjvskyhrccimb.supabase.co";
+  const SB_KEY = "sb_publishable_XPf79AkCY4bjiyJlWHBlVg_zF-qFLSw";
+  const sb = window.supabase?.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  const ERR = {
+    "Invalid login credentials": "Email o password sbagliate.",
+    "Email not confirmed": "Prima conferma l'email: apri il link che ti è arrivato, poi accedi.",
+    "User already registered": "Questa email ha già un account: usa «Accedi».",
+  };
+  const msg = (t, cls = "") => { const p = $("#loginMsg"); p.textContent = t; p.className = cls; };
+
+  function showLogin(text) {
+    S.db = null; S.loaded = false;
+    document.body.classList.add("out");
+    $("#login").hidden = false; $("#learned").hidden = true;
+    $("#list").innerHTML = ""; $("#count").textContent = ""; $("#status").textContent = "";
+    if (text) msg(text);
+  }
+  async function loadAll() {
+    const since = new Date(Date.now() - 45 * 864e5).toISOString();
+    const cars = new Map(), gone = new Set(), excl = new Set();
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.from("radar_auto").select("id,dati,stato").or(`creato.gte."${since}",stato.eq.escluso`)
+        .order("creato", { ascending: false }).range(from, from + 999);
+      if (error) throw error;
+      for (const r of data) {
+        if (r.stato === "escluso") { excl.add(r.id); continue; }
+        cars.set(r.id, { ...r.dati, id: r.id });
+        if (r.stato === "rimosso") gone.add(r.id);
+      }
+      if (data.length < 1000) break;
+    }
+    const [v, g, p] = await Promise.all([
+      sb.from("radar_voti").select("id,voto,nota,ts,auto"),
+      sb.from("radar_giri").select("dati").order("ts", { ascending: false }).limit(1),
+      sb.from("radar_profilo").select("testo,ts").order("ts", { ascending: false }).limit(1),
+    ]);
+    if (v.error) throw v.error;
+    S.cars = cars; S.gone = gone; S.excluded = excl;
+    S.votes = new Map((v.data || []).map((x) => [x.id, x]));
+    S.giro = g.data?.[0]?.dati || null;
+    S.profilo = p.data?.[0] || null;
+    S.loaded = true; S.lastLoad = Date.now();
+    render(); renderStatus(); renderLearned();
+    if (!S.giro && !cars.size) {
+      $("#list").innerHTML = `<div class="empty"><h2>Account non ancora collegato</h2>Hai fatto l'accesso, ma questo account non è ancora abilitato a vedere Radar Auto. Scrivi a Claude che ti sei registrato: lo collega in un attimo.</div>`;
+    }
+  }
+  async function showApp() {
+    S.db = sb;
+    document.body.classList.remove("out");
+    $("#login").hidden = true;
+    syncFilters(); render(); renderStatus();
+    try { await loadAll(); }
+    catch (e) { S.loaded = true; render(); $("#status").textContent = "Dati non raggiungibili per ora"; toast("Problema nel leggere i dati"); }
+  }
+
+  $("#loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg("Accesso in corso…");
+    const { error } = await sb.auth.signInWithPassword({ email: $("#loginEmail").value.trim(), password: $("#loginPass").value });
+    if (error) msg(ERR[error.message] || "Accesso non riuscito: " + error.message, "err");
+  });
+  $("#btnSignup").addEventListener("click", async () => {
+    const email = $("#loginEmail").value.trim(), password = $("#loginPass").value;
+    if (!email || password.length < 8) { msg("Scrivi la tua email e una password di almeno 8 caratteri, poi tocca «Crea account».", "err"); return; }
+    msg("Creo l'account…");
+    const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) { msg(ERR[error.message] || "Non sono riuscito a creare l'account: " + error.message, "err"); return; }
+    if (!data.session) msg("Fatto! Ti ho mandato una mail: apri il link per confermare l'account, poi torna qui e tocca «Accedi».", "ok");
+  });
+  $("#logout").addEventListener("click", async () => { await sb.auth.signOut(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && S.db && Date.now() - S.lastLoad > 120000) loadAll().catch(() => {});
+  });
+
+  syncFilters();
+  if (!sb) {
+    $("#login").hidden = true;
+    $("#list").innerHTML = `<div class="empty"><h2>Non riesco a caricare Radar Auto</h2>Controlla la connessione a internet e ricarica la pagina.</div>`;
+  } else {
+    let started = false;
+    sb.auth.onAuthStateChange((ev, session) => {
+      if (session && !started) { started = true; showApp(); }
+      if (!session && ev === "SIGNED_OUT") { started = false; showLogin("Sei uscito. Entra di nuovo quando vuoi."); }
+    });
+    sb.auth.getSession().then(({ data }) => { if (!data.session && !started) showLogin(); });
+  }
+})();
+</script>
+</body>
+</html>
