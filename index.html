@@ -436,8 +436,35 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
       toast(e?.code === "42501" ? "Questo account non può salvare qui" : "Non sono riuscito a salvare, riprova");
     }
   }
+  // Ricorda scheda e punto della lista: se l'annuncio si apre al posto dell'app, tornando indietro si riparte da lì
+  const saveView = () => { try { if (S.loaded && S.db) sessionStorage.setItem("radar-vista", JSON.stringify({ tab: S.tab, shown: S.shown, y: window.scrollY, t: Date.now() })); } catch (e) {} };
+  try { history.scrollRestoration = "manual"; } catch (e) {}
+  let viewRestored = false;
+  function restoreView() {
+    if (viewRestored) return;
+    viewRestored = true;
+    try {
+      const v = JSON.parse(sessionStorage.getItem("radar-vista") || "null");
+      if (!v || Date.now() - v.t > 6 * 3600e3) return;
+      S.tab = v.tab || S.tab; S.shown = Math.max(40, v.shown || 40);
+      render();
+      const go = () => window.scrollTo(0, v.y || 0);
+      requestAnimationFrame(go); setTimeout(go, 350); setTimeout(go, 900);
+    } catch (e) {}
+  }
+  window.addEventListener("pagehide", saveView);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveView(); });
+
   let noteId = null;
   $("#list").addEventListener("click", (e) => {
+    const link = e.target.closest("a.act.open");
+    if (link) {
+      saveView();
+      e.preventDefault();
+      const w = window.open(link.href, "_blank", "noopener");
+      if (!w) location.href = link.href;
+      return;
+    }
     const b = e.target.closest("[data-act]"); if (!b) return;
     if (b.dataset.act === "loadmore") { S.shown += 40; render(); return; }
     const id = b.closest("[data-id]")?.dataset.id; if (!id) return;
@@ -515,7 +542,7 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
     document.body.classList.remove("out");
     $("#login").hidden = true;
     syncFilters(); render(); renderStatus();
-    try { await loadAll(); }
+    try { await loadAll(); restoreView(); }
     catch (e) { S.loaded = true; render(); $("#status").textContent = "Dati non raggiungibili per ora"; toast("Problema nel leggere i dati"); }
   }
 
