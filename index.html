@@ -349,7 +349,8 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
 
   function render() {
     const cars = allCars();
-    const tabs = [["davedere", "Da vedere"], ["piace", "Mi piacciono"], ["forse", "Forse"], ["nonpiace", "Non mi piacciono"], ["scartate", "Scartate da Claude"]];
+    const tabs = [["davedere", "Da vedere"], ["piace", "Mi piacciono"], ["forse", "Forse"], ["nonpiace", "Non mi piacciono"]];
+    if (!tabs.some(([k]) => k === S.tab)) S.tab = "davedere";
     $("#tabs").innerHTML = tabs.map(([k, l]) => {
       const n = cars.filter((c) => inTab(c, k) && (k !== "davedere" || passFilters(c))).length;
       return `<button class="tab" role="tab" aria-selected="${S.tab === k}" data-tab="${k}">${l} <b>${n}</b></button>`;
@@ -359,11 +360,10 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
     if (!S.loaded) { el.innerHTML = `<div class="empty"><h2>Carico le auto…</h2>Se non compare nulla entro pochi secondi, apri questa pagina da claude.ai con il tuo account.</div>`; $("#count").textContent = ""; return; }
     if (!list.length) {
       const msg = {
-        davedere: cars.length ? ["Nessuna auto con questi filtri", "Allarga i filtri o aspetta il prossimo controllo: Claude cerca nuove auto più volte al giorno."] : ["Nessuna auto ancora", "Al primo controllo Claude cercherà su Subito e AutoScout24 e metterà qui le auto adatte a te."],
+        davedere: cars.length ? ["Nessuna auto da vedere", "Qui arrivano solo le auto che Claude giudica affari (voto 6 o più). Allarga i filtri o aspetta il prossimo controllo: Claude cerca più volte al giorno."] : ["Nessuna auto ancora", "Al primo controllo Claude cercherà su Subito e AutoScout24 e metterà qui le auto adatte a te."],
         piace: ["Nessuna auto tra le preferite", "Tocca «Mi piace» su un'auto per tenerla qui."],
         forse: ["Niente in sospeso", "Tocca «Forse» sulle auto che non ti convincono del tutto ma che non vuoi scartare. Aggiungi una nota per dire cosa manca: Claude ne tiene conto."],
         nonpiace: ["Niente qui", "Le auto a cui dai «No» finiscono qui, e Claude ne tiene conto."],
-        scartate: ["Nessuna auto scartata", "Qui vedi le auto che Claude ha scartato, con il motivo. Se una ti piace comunque, dagli «Mi piace»: imparerà."],
       }[S.tab];
       el.innerHTML = `<div class="empty"><h2>${msg[0]}</h2>${msg[1]}</div>`;
       $("#count").textContent = "";
