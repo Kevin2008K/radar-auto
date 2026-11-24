@@ -174,7 +174,7 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
     <div class="filters" id="filters" hidden>
       <label>Prezzo massimo <output id="o-prezzo"></output><input type="range" id="f-prezzo" min="1000" max="5000" step="100"></label>
       <label>Km massimi <output id="o-km"></output><input type="range" id="f-km" min="30000" max="180000" step="5000"></label>
-      <label>Anno minimo <output id="o-anno"></output><input type="range" id="f-anno" min="2009" max="2020" step="1"></label>
+      <label>Anno minimo <output id="o-anno"></output><input type="range" id="f-anno" min="2007" max="2020" step="1"></label>
       <label>Distanza massima <output id="o-dist"></output><input type="range" id="f-dist" min="10" max="100" step="5"></label>
       <label>Potenza minima <output id="o-cvmin"></output><input type="range" id="f-cvmin" min="40" max="145" step="5"></label>
       <label>Potenza massima <output id="o-cvmax"></output><input type="range" id="f-cvmax" min="40" max="145" step="5"></label>
@@ -183,7 +183,7 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
       <label>Venditore
         <select id="f-venditore"><option value="tutti">Tutti</option><option value="Privato">Solo privati</option><option value="Concessionario">Solo concessionari</option></select></label>
       <label>Sito
-        <select id="f-sito"><option value="tutti">Tutti</option><option value="Subito">Subito</option><option value="AutoScout24">AutoScout24</option></select></label>
+        <select id="f-sito"><option value="tutti">Tutti</option><option value="Subito">Subito</option><option value="AutoScout24">AutoScout24</option><option value="Automobile.it">Automobile.it</option></select></label>
       <label class="check"><input type="checkbox" id="f-oggi"> Solo trovate nelle ultime 24 ore</label>
       <label class="check"><input type="checkbox" id="f-gpl"> Includi auto con impianto GPL/metano</label>
       <button class="btn-ghost reset" id="resetFilters" type="button">Azzera filtri</button>
@@ -225,10 +225,10 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
 <script>
 (() => {
   const $ = (s) => document.querySelector(s);
-  const DEF = { prezzo: 5000, km: 180000, anno: 2009, dist: 100, cvmin: 40, cvmax: 145, giudizio: "tutte", venditore: "tutti", sito: "tutti", oggi: false, gpl: false };
+  const DEF = { prezzo: 5000, km: 180000, anno: 2007, dist: 100, cvmin: 40, cvmax: 145, giudizio: "tutte", venditore: "tutti", sito: "tutti", oggi: false, gpl: false };
   const S = { cars: new Map(), votes: new Map(), gone: new Set(), excluded: new Set(), giro: null, profilo: null, tab: "davedere", sort: "recenti",
               f: { ...DEF }, open: new Set(), shown: 40, db: null, loaded: false, canWrite: true, photos: new Map(), photoAsked: new Set(), lastLoad: 0 };
-  try { const saved = JSON.parse(localStorage.getItem("radar-filtri") || "null"); if (saved) { Object.assign(S.f, saved.f || {}); S.sort = saved.sort || S.sort; } } catch (e) {}
+  try { const saved = JSON.parse(localStorage.getItem("radar-filtri") || "null"); if (saved) { Object.assign(S.f, saved.f || {}); S.sort = saved.sort || S.sort; if (S.f.anno === 2009) S.f.anno = 2007; } } catch (e) {}
   const saveUi = () => { try { localStorage.setItem("radar-filtri", JSON.stringify({ f: S.f, sort: S.sort })); } catch (e) {} };
 
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -360,7 +360,7 @@ body.out .tabs, body.out .toolbar, body.out .filters { display: none !important;
     if (!S.loaded) { el.innerHTML = `<div class="empty"><h2>Carico le auto…</h2>Se non compare nulla entro pochi secondi, apri questa pagina da claude.ai con il tuo account.</div>`; $("#count").textContent = ""; return; }
     if (!list.length) {
       const msg = {
-        davedere: cars.length ? ["Nessuna auto da vedere", "Qui arrivano solo le auto che Claude giudica affari (voto 6 o più). Allarga i filtri o aspetta il prossimo controllo: Claude cerca più volte al giorno."] : ["Nessuna auto ancora", "Al primo controllo Claude cercherà su Subito e AutoScout24 e metterà qui le auto adatte a te."],
+        davedere: cars.length ? ["Nessuna auto da vedere", "Qui arrivano solo le auto che Claude giudica affari (voto 6 o più). Allarga i filtri o aspetta il prossimo controllo: Claude cerca più volte al giorno."] : ["Nessuna auto ancora", "Al primo controllo Claude cercherà su Subito, AutoScout24 e Automobile.it e metterà qui le auto adatte a te."],
         piace: ["Nessuna auto tra le preferite", "Tocca «Mi piace» su un'auto per tenerla qui."],
         forse: ["Niente in sospeso", "Tocca «Forse» sulle auto che non ti convincono del tutto ma che non vuoi scartare. Aggiungi una nota per dire cosa manca: Claude ne tiene conto."],
         nonpiace: ["Niente qui", "Le auto a cui dai «No» finiscono qui, e Claude ne tiene conto."],
